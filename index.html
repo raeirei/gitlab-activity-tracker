@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitLab Activity Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f172a;
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 1px solid #334155;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            color: #f1f5f9;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: #3b82f6;
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
+        }
+
+        .stat-card h3 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+
+        .controls {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 1px solid #334155;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-input-label {
+            background: #475569;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-input-label:hover {
+            background: #64748b;
+        }
+
+        .date-filter {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .date-filter label {
+            font-weight: 500;
+            color: #cbd5e1;
+            font-size: 0.9rem;
+        }
+
+        .date-input {
+            padding: 8px 12px;
+            border: 2px solid #475569;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s ease;
+            background: #334155;
+            color: #e2e8f0;
+        }
+
+        .date-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .clear-btn {
+            padding: 8px 12px;
+            background: #374151;
+            color: #9ca3af;
+            border: 2px solid #475569;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+
+        .clear-btn:hover {
+            background: #4b5563;
+            border-color: #64748b;
+            color: #d1d5db;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: 2px solid #475569;
+            background: #334155;
+            color: #cbd5e1;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .filter-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .filter-btn:hover {
+            background: #475569;
+            border-color: #64748b;
+            color: #e2e8f0;
+        }
+
+        .filter-btn.active:hover {
+            background: #2563eb;
+        }
+
+        .timeline {
+            position: relative;
+        }
+
+        .day-group {
+            background: #1e293b;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 1px solid #334155;
+            transition: all 0.2s ease;
+        }
+
+        .day-group:hover {
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .day-header {
+            background: #0f172a;
+            color: #f1f5f9;
+            padding: 20px 30px;
+            font-size: 1.3rem;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #334155;
+        }
+
+        .day-count {
+            background: #334155;
+            color: #cbd5e1;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .activities {
+            padding: 0;
+        }
+
+        .activity-item {
+            padding: 20px 30px;
+            border-bottom: 1px solid #334155;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .activity-item:hover {
+            background: #0f172a;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .activity-type {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .activity-type.commit {
+            background: #10b981;
+            color: white;
+        }
+
+        .activity-type.merge-request {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .branch-info {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .branch {
+            background: #1e3a8a;
+            color: #bfdbfe;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+
+        .arrow {
+            color: #64748b;
+            font-weight: bold;
+        }
+
+        .project {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .activity-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .activity-meta {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            flex-wrap: wrap;
+        }
+
+        .sha {
+            font-family: 'Monaco', 'Menlo', monospace;
+            background: #0f172a;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #f472b6;
+            border: 1px solid #374151;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+        }
+
+        .no-data h3 {
+            margin-bottom: 10px;
+            font-size: 1.5rem;
+            color: #e2e8f0;
+        }
+
+        .load-sample {
+            background: #475569;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 15px;
+            transition: all 0.2s ease;
+        }
+
+        .load-sample:hover {
+            background: #64748b;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 15px;
+            }
+
+            .date-filter {
+                justify-content: center;
+            }
+
+            .filter-buttons {
+                justify-content: center;
+            }
+
+            .day-header {
+                padding: 15px 20px;
+                font-size: 1.1rem;
+            }
+
+            .activity-item {
+                padding: 15px 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 GitLab Activity Viewer</h1>
+            <div class="stats" id="stats">
+                <div class="stat-card">
+                    <h3 id="totalActivities">-</h3>
+                    <p>Total Activities</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="totalCommits">-</h3>
+                    <p>Commits</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="totalMRs">-</h3>
+                    <p>Merge Requests</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="totalProjects">-</h3>
+                    <p>Projects</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="file-input-wrapper">
+                <input type="file" id="fileInput" class="file-input" accept=".json">
+                <label for="fileInput" class="file-input-label">
+                    📁 Load JSON File
+                </label>
+            </div>
+
+            <div class="date-filter">
+                <label for="dateFrom">From:</label>
+                <input type="date" id="dateFrom" class="date-input">
+                <label for="dateTo">To:</label>
+                <input type="date" id="dateTo" class="date-input">
+                <button id="clearDates" class="clear-btn">Clear</button>
+            </div>
+
+            <div class="filter-buttons">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="commit">Commits</button>
+                <button class="filter-btn" data-filter="merge-request">MRs</button>
+            </div>
+        </div>
+
+        <div class="timeline" id="timeline">
+            <div class="no-data">
+                <h3>👋 Welcome!</h3>
+                <p>Load your daily_activity.json file to see your GitLab activities in a beautiful timeline</p>
+                <button class="load-sample" onclick="loadSampleData()">📊 Load Sample Data</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allData = null;
+        let filteredData = [];
+        let currentFilter = 'all';
+
+        // File input handler
+        document.getElementById('fileInput').addEventListener('change', function (event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    try {
+                        const jsonData = JSON.parse(e.target.result);
+                        loadData(jsonData);
+                    } catch (error) {
+                        alert('Error parsing JSON file: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // Date filter handlers
+        document.getElementById('dateFrom').addEventListener('change', filterAndRender);
+        document.getElementById('dateTo').addEventListener('change', filterAndRender);
+        document.getElementById('clearDates').addEventListener('click', function () {
+            document.getElementById('dateFrom').value = '';
+            document.getElementById('dateTo').value = '';
+            filterAndRender();
+        });
+
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.dataset.filter;
+                filterAndRender();
+            });
+        });
+
+        function loadData(jsonData) {
+            allData = jsonData;
+            updateStats(jsonData);
+            filterAndRender();
+        }
+
+        function updateStats(data) {
+            const activities = data.activities || [];
+            const commits = activities.filter(a => a.type === 'Commit').length;
+            const mrs = activities.filter(a => a.type === 'Merge Request').length;
+            const projects = new Set(activities.map(a => a.project)).size;
+
+            document.getElementById('totalActivities').textContent = activities.length;
+            document.getElementById('totalCommits').textContent = commits;
+            document.getElementById('totalMRs').textContent = mrs;
+            document.getElementById('totalProjects').textContent = projects;
+        }
+
+        function filterAndRender() {
+            if (!allData) return;
+
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            let filtered = allData.activities || [];
+
+            // Filter by type
+            if (currentFilter !== 'all') {
+                const typeMap = {
+                    'commit': 'Commit',
+                    'merge-request': 'Merge Request'
+                };
+                filtered = filtered.filter(activity => activity.type === typeMap[currentFilter]);
+            }
+
+            // Filter by date range
+            if (dateFrom || dateTo) {
+                filtered = filtered.filter(activity => {
+                    const activityDate = new Date(activity.date).toISOString().split('T')[0];
+
+                    if (dateFrom && dateTo) {
+                        return activityDate >= dateFrom && activityDate <= dateTo;
+                    } else if (dateFrom) {
+                        return activityDate >= dateFrom;
+                    } else if (dateTo) {
+                        return activityDate <= dateTo;
+                    }
+                    return true;
+                });
+            }
+
+            filteredData = filtered;
+            renderTimeline(filtered);
+        }
+
+        function renderTimeline(activities) {
+            const timeline = document.getElementById('timeline');
+
+            if (activities.length === 0) {
+                timeline.innerHTML = `
+                    <div class="no-data">
+                        <h3>🔍 No activities found</h3>
+                        <p>Try adjusting your date range or filter settings</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Group by day
+            const groupedByDay = {};
+            activities.forEach(activity => {
+                const date = new Date(activity.date);
+                const dayKey = date.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+
+                if (!groupedByDay[dayKey]) {
+                    groupedByDay[dayKey] = [];
+                }
+                groupedByDay[dayKey].push(activity);
+            });
+
+            // Sort days by date (newest first)
+            const sortedDays = Object.entries(groupedByDay).sort(([a], [b]) => {
+                return new Date(b) - new Date(a);
+            });
+
+            timeline.innerHTML = sortedDays.map(([day, dayActivities]) => `
+                <div class="day-group">
+                    <div class="day-header">
+                        <span>📅 ${day}</span>
+                        <span class="day-count">${dayActivities.length} activities</span>
+                    </div>
+                    <div class="activities">
+                        ${dayActivities.map(activity => renderActivity(activity)).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderActivity(activity) {
+            const isCommit = activity.type === 'Commit';
+            const time = new Date(activity.date).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            // Handle different data structures for MRs vs Commits
+            let branchInfo = '';
+            if (isCommit) {
+                branchInfo = `
+                    <div class="branch-info">
+                        <span class="branch">${activity.branch || 'unknown'}</span>
+                        ${activity.target_branch ? `<span class="arrow">→</span><span class="branch">${activity.target_branch}</span>` : ''}
+                    </div>
+                `;
+            } else {
+                // For Merge Requests, use source and target instead of branch and target_branch
+                const source = activity.source || activity.branch || 'unknown';
+                const target = activity.target || activity.target_branch || 'unknown';
+                branchInfo = `
+                    <div class="branch-info">
+                        <span class="branch">${source}</span>
+                        <span class="arrow">→</span>
+                        <span class="branch">${target}</span>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="activity-item">
+                    <div class="activity-header">
+                        <span class="activity-type ${isCommit ? 'commit' : 'merge-request'}">
+                            ${isCommit ? '📝 Commit' : '🔀 Merge Request'}
+                        </span>
+                        ${branchInfo}
+                        ${activity.project ? `<span class="project">📁 ${activity.project}</span>` : ''}
+                    </div>
+                    <div class="activity-title">${activity.title || 'No title'}</div>
+                    <div class="activity-meta">
+                        <span>🕒 ${time}</span>
+                        ${activity.sha ? `<span class="sha">${activity.sha.substring(0, 8)}</span>` : ''}
+                        ${activity.iid ? `<span class="sha">!${activity.iid}</span>` : ''}
+                        ${activity.from_merge_request ? `<span>🔗 From MR: ${activity.mr_source} → ${activity.mr_target}</span>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function loadSampleData() {
+            const sampleData = {
+                "generated_at": "2025-08-16T10:30:00.000Z",
+                "total_activities": 6,
+                "summary": {
+                    "commits": 4,
+                    "merge_requests": 2
+                },
+                "activities": [
+                    {
+                        "type": "Commit",
+                        "branch": "feature/user-authentication",
+                        "target_branch": "main",
+                        "title": "Add JWT token validation middleware",
+                        "date": "2025-08-16T14:30:00Z",
+                        "sha": "abc123def456",
+                        "from_merge_request": true,
+                        "mr_source": "feature/user-authentication",
+                        "mr_target": "main",
+                        "project": "mycompany/webapp"
+                    },
+                    {
+                        "type": "Merge Request",
+                        "source": "feature/user-authentication",
+                        "target": "main",
+                        "title": "Implement user authentication system",
+                        "date": "2025-08-16T13:45:00Z",
+                        "project": "mycompany/webapp"
+                    },
+                    {
+                        "type": "Commit",
+                        "branch": "feature/dashboard-redesign",
+                        "target_branch": "develop",
+                        "title": "Update dashboard components with new design system",
+                        "date": "2025-08-15T16:20:00Z",
+                        "sha": "def456ghi789",
+                        "from_merge_request": false,
+                        "mr_source": null,
+                        "mr_target": null,
+                        "project": "mycompany/frontend"
+                    },
+                    {
+                        "type": "Commit",
+                        "branch": "bugfix/payment-gateway",
+                        "target_branch": "main",
+                        "title": "Fix payment processing timeout issue",
+                        "date": "2025-08-15T11:15:00Z",
+                        "sha": "ghi789jkl012",
+                        "from_merge_request": true,
+                        "mr_source": "bugfix/payment-gateway",
+                        "mr_target": "main",
+                        "project": "mycompany/api"
+                    },
+                    {
+                        "type": "Merge Request",
+                        "source": "feature/email-notifications",
+                        "target": "develop",
+                        "title": "Add email notification service integration",
+                        "date": "2025-08-14T09:30:00Z",
+                        "project": "mycompany/backend"
+                    },
+                    {
+                        "type": "Commit",
+                        "branch": "feature/mobile-responsive",
+                        "target_branch": "main",
+                        "title": "Make navigation component mobile responsive",
+                        "date": "2025-08-14T15:45:00Z",
+                        "sha": "jkl012mno345",
+                        "from_merge_request": false,
+                        "mr_source": null,
+                        "mr_target": null,
+                        "project": "mycompany/webapp"
+                    }
+                ]
+            };
+
+            loadData(sampleData);
+        }
+    </script>
+</body>
+
+</html>
